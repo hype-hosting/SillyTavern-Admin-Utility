@@ -257,6 +257,97 @@ async function linkLorebook(config) {
 }
 
 /**
+ * Mode 4: Add a charLore entry (character name + extraBooks array).
+ * Adds to world_info_settings.world_info.charLore in each user's settings.json.
+ * If an entry with the same character name already exists, it is replaced.
+ * @param {object} config
+ */
+async function addCharLore(config) {
+  const CHARLORE_PATH = 'world_info_settings.world_info.charLore';
+
+  // Prompt for character name
+  const charName = await text({
+    message: 'Character name (exactly as it appears on the card):',
+    validate: (v) => v.trim() ? undefined : 'Character name is required',
+  });
+  if (typeof charName === 'symbol') return;
+
+  // Collect extraBooks in a loop
+  const extraBooks = [];
+  while (true) {
+    const book = await text({
+      message: extraBooks.length === 0
+        ? 'Enter a lorebook name for extraBooks (e.g. "Z-hyperion-prompt"):'
+        : 'Enter another lorebook name (or leave empty to finish):',
+      validate: (v) => {
+        if (extraBooks.length === 0 && !v.trim()) return 'At least one lorebook is required';
+        return undefined;
+      },
+    });
+    if (typeof book === 'symbol') break;
+    if (!book.trim()) break;
+    extraBooks.push(book.trim());
+    log.info(`  Added: ${chalk.cyan(book.trim())}`);
+  }
+
+  if (extraBooks.length === 0) return;
+
+  // Build the entry and show preview
+  const entry = { name: charName.trim(), extraBooks };
+
+  printHeader('charLore entry to add');
+  console.log(chalk.dim(JSON.stringify(entry, null, 2)));
+  console.log('');
+
+  const users = await selectUsers(config);
+  if (users.length === 0) return;
+
+  const proceed = await confirm({
+    message: `Add charLore entry for "${charName.trim()}" to ${users.length} user(s)?\n  (If this character already has an entry, it will be replaced.)`,
+  });
+  if (typeof proceed === 'symbol' || !proceed) return;
+
+  await batchOperation(users, async (handle) => {
+    const settingsPath = userSettingsPath(config.dataRoot, handle);
+
+    if (!existsSync(settingsPath)) {
+      return { skipped: 'no settings.json' };
+    }
+
+    const settings = readSettings(settingsPath);
+    if (settings === null) {
+      return { skipped: 'no settings.json' };
+    }
+
+    if (!config.dryRun) {
+      backupUserFile(config.dataRoot, handle, 'settings.json');
+    }
+
+    // Get the current charLore array, or create one
+    const currentCharLore = lodashGet(settings, CHARLORE_PATH, []);
+    const charLore = Array.isArray(currentCharLore) ? currentCharLore : [];
+
+    // Remove existing entry with the same name (replace behavior)
+    const filtered = charLore.filter(e => e.name !== entry.name);
+
+    // Append the new entry
+    filtered.push(entry);
+
+    // Write back
+    const updated = applyMutations(settings, [{ path: CHARLORE_PATH, value: filtered }]);
+
+    if (config.dryRun) {
+      const action = filtered.length === charLore.length ? 'add' : 'replace';
+      info(`[DRY RUN] Would ${action} charLore entry for "${entry.name}" in ${settingsPath}`);
+    } else {
+      writeSettings(settingsPath, updated);
+    }
+
+    return 'success';
+  }, 'Add charLore Entry');
+}
+
+/**
  * Main entry point.
  * @param {object} config
  */
@@ -264,14 +355,16 @@ export async function run(config) {
   const mode = await select({
     message: 'How would you like to edit settings?',
     options: [
+      { value: 'charlore', label: 'Add charLore entry',             hint: 'link lorebooks to a character' },
       { value: 'keys',     label: 'Set specific key/value pairs',   hint: 'enter dot-paths and values' },
       { value: 'template', label: 'Sync from golden template',      hint: 'pick sections from a template file' },
-      { value: 'lorebook', label: 'Link character lorebook',        hint: 'add lorebook to settings array' },
+      { value: 'lorebook', label: 'Link lorebook to globalSelect',  hint: 'add lorebook to a flat array' },
     ],
   });
   if (typeof mode === 'symbol') return;
 
-  if (mode === 'keys') await setKeyValues(config);
+  if (mode === 'charlore') await addCharLore(config);
+  else if (mode === 'keys') await setKeyValues(config);
   else if (mode === 'template') await syncFromTemplate(config);
   else if (mode === 'lorebook') await linkLorebook(config);
 }
