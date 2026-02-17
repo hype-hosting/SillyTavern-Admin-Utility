@@ -1,0 +1,11 @@
+{
+  "stRoot": "/root/SillyTavern",
+  "dataRoot": "/root/SillyTavern/data",
+  "scaffoldDir": "/root/SillyTavern/data/default/scaffold",
+  "contentDir": "/root/SillyTavern/data/default/content",
+  "backupRoot": "/root/SillyTavern/data/_admin-backups",
+  "excludeDirs": ["default", "_storage"],
+  "serverPort": 8000,
+  "pm2Name": "SillyTavern",
+  "dryRun": false
+}
