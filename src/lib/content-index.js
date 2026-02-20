@@ -27,7 +27,7 @@ export function readIndex(indexPath) {
  */
 export function writeIndex(indexPath, entries) {
   mkdirSync(dirname(indexPath), { recursive: true });
-  writeFileSync(indexPath, JSON.stringify(entries, null, 2) + '\n');
+  writeFileSync(indexPath, JSON.stringify(entries, null, 4) + '\n');
 }
 
 /**

@@ -26,7 +26,7 @@ function readSettings(path) {
  * @param {object} settings
  */
 function writeSettings(path, settings) {
-  writeFileSync(path, JSON.stringify(settings, null, 2) + '\n');
+  writeFileSync(path, JSON.stringify(settings, null, 4) + '\n');
 }
 
 /**
