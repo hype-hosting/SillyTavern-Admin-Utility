@@ -16,7 +16,7 @@ const DEFAULTS = {
   backupRoot: '/root/SillyTavern/data/_admin-backups',
   excludeDirs: ['default', '_storage'],
   serverPort: 8000,
-  pm2Name: 'SillyTavern',
+  pm2Name: 'sillytavern',
   dryRun: false,
 };
 
